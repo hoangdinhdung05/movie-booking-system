@@ -1,0 +1,125 @@
+#Config Application
+spring:
+  application:
+    name: movie-booking-system
+
+  #Database config
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/movie-book?createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC}
+    username: ${DB_USER:root}
+    password: ${DB_PASS:123456789}
+    driver-class-name: ${DB_DRIVER:com.mysql.cj.jdbc.Driver}
+
+  #Jpa config
+  jpa:
+    hibernate:
+      ddl-auto: none
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.MySQL8Dialect
+
+  #Flyway config
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+  #Redis config
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 60000ms
+      lettuce:
+        pool:
+          max-active: 20
+          max-wait: -1ms
+          max-idle: 10
+          min-idle: 0
+
+  #Mail config
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${MAIL_ADMIN}
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+  #File config
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 20MB
+
+  #Oauth2 config
+#  security:
+#    oauth2:
+#      client:
+#        registration:
+#          google:
+#            client-id:
+#            client-secret: ${client-secret}
+#            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+#            scope:
+#              - email
+#              - profile
+#        provider:
+#          google:
+#            authorization-uri: https://accounts.google.com/o/oauth2/v2/auth
+#            token-uri: https://oauth2.googleapis.com/token
+#            user-info-uri: https://www.googleapis.com/oauth2/v3/userinfo
+
+#Server config
+server:
+  port: 8080
+
+
+#Security config
+jwt:
+  secret: ${JWT_SECRET}
+  expiration: 3600000
+  refresh-expiration: 86400000
+
+#Config Docs
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+openapi:
+  service:
+    api-docs: movie-booking-system
+    server: http://localhost:${server.port}
+    title: Movie Booking Service
+    version: 1.0.0
+
+#Redis application config
+app:
+  redis:
+    key-prefix: "jwt-auth:"
+    session-prefix: "session:"
+    permission-prefix: "permissions:"
+    token-prefix: "token:"
+    refresh-prefix: "refresh:"
+    cache-ttl:
+      session: 86400
+      permission: 43200
+      token: 86400
+      refresh: 604800
+
+#Logging config
+logging:
+  level:
+    root: INFO
+    com.hoangdung.movie_booking: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %highlight(%-5level) %cyan(%logger{36}) - %msg%n"
