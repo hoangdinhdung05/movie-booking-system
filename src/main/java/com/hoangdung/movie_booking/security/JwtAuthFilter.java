@@ -1,5 +1,9 @@
 package com.hoangdung.movie_booking.security;
 
+import com.hoangdung.movie_booking.config.SecurityConfig;
+import com.hoangdung.movie_booking.entity.User;
+import com.hoangdung.movie_booking.utils.enums.UserStatus;
+import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -12,9 +16,12 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
+import org.springframework.util.AntPathMatcher;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
+import java.util.Arrays;
+import io.jsonwebtoken.security.SignatureException;
 
 @Component
 @RequiredArgsConstructor
@@ -23,17 +30,20 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final UserDetailsServiceImpl userDetailsService;
     private final JwtProvider jwtProvider;
+    private final AntPathMatcher pathMatcher = new AntPathMatcher();
 
-    protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getServletPath();
-        return path.startsWith("/api/auth");
+        return Arrays.stream(SecurityConfig.PUBLIC_URL)
+                .anyMatch(pattern -> pathMatcher.match(pattern, path));
     }
 
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request,
                                     @NonNull HttpServletResponse response,
                                     @NonNull FilterChain filterChain) throws ServletException, IOException {
-        log.info("==========Do FilterInternal Running==========");
+        log.debug("JwtAuthFilter running for path: {}", request.getServletPath());
 
         try {
 
@@ -41,6 +51,14 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             if (token != null && jwtProvider.validateToken(token)) {
                 String username = jwtProvider.getUsernameFromJwtToken(token);
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+
+                // Check status của user
+                if (userDetails instanceof User user && user.getStatus() == UserStatus.INACTIVE) {
+                    log.warn("Blocked inactive user: {}", username);
+                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "User is inactive");
+                    return;
+                }
+
                 UsernamePasswordAuthenticationToken authenticationToken =
                         new UsernamePasswordAuthenticationToken(
                                 userDetails,
@@ -52,9 +70,20 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             }
 
             log.info("Do FilterInternal Running Successfully");
-        } catch (Exception e) {
-            log.error("Cannot set user authentication: {}", e.getMessage());
+        } catch (ExpiredJwtException ex) {
+            log.warn("Expired JWT token: {}", ex.getMessage());
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token expired");
+            return;
+        } catch (SignatureException ex) {
+            log.warn("Invalid JWT signature: {}", ex.getMessage());
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid token");
+            return;
+        } catch (Exception ex) {
+            log.error("JWT authentication error: {}", ex.getMessage());
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized");
+            return;
         }
+
         filterChain.doFilter(request, response);
     }
 

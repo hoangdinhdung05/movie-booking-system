@@ -33,7 +33,7 @@ public class SecurityConfig {
     private final UserDetailsServiceImpl userDetailsService;
     private final JwtAuthFilter jwtAuthFilter;
     private final AuthEntryPointJwt authEntryPointJwt;
-    private final String[] PUBLIC_URL = {
+    public static final String[] PUBLIC_URL = {
             "/",
             "/oauth2/**",
             "/api/auth/**",

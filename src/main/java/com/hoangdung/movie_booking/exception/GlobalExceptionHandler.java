@@ -5,6 +5,8 @@ import lombok.extern.slf4j.Slf4j;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.BindException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -112,6 +114,36 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleGenericException(Exception ex, WebRequest request) {
         log.error("Unexpected exception occurred: {}", ex.getMessage(), ex);
         return buildErrorResponse("INTERNAL_SERVER_ERROR", "An unexpected error occurred", HttpStatus.INTERNAL_SERVER_ERROR, request, null);
+    }
+
+    /**
+     * Hand login failure errors (username/password error).
+     */
+    @ExceptionHandler(BadCredentialsException.class)
+    public ResponseEntity<ErrorResponse> handleBadCredentials(BadCredentialsException ex, WebRequest request) {
+        log.warn("Login failed: {}", ex.getMessage());
+        return buildErrorResponse(
+                "BAD_CREDENTIALS",
+                "Invalid username or password",
+                HttpStatus.UNAUTHORIZED,
+                request,
+                null
+        );
+    }
+
+    /**
+     * Handle authenticate (User not found).
+     */
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ErrorResponse> handleAuthenticationException(AuthenticationException ex, WebRequest request) {
+        log.warn("Authentication failed: {}", ex.getMessage());
+        return buildErrorResponse(
+                "AUTHENTICATION_FAILED",
+                "Authentication failed",
+                HttpStatus.UNAUTHORIZED,
+                request,
+                null
+        );
     }
 
     /**
