@@ -1,6 +1,6 @@
 package com.hoangdung.movie_booking.entity;
 
-import com.hoangdung.movie_booking.utils.UserStatus;
+import com.hoangdung.movie_booking.utils.enums.UserStatus;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;

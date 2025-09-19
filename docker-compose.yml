@@ -2,7 +2,7 @@ version: '3.8'
 services:
   redis:
     image: redis:7-alpine
-    container_name: redis-server
+    container_name: redis-server-movie-booking
     ports:
       - "6379:6379"
     volumes:
@@ -12,7 +12,7 @@ services:
 
   redis-commander:
     image: rediscommander/redis-commander:latest
-    container_name: redis-ui
+    container_name: redis-ui-movie-booking
     environment:
       - REDIS_HOSTS=local:redis:6379
     ports:
@@ -26,5 +26,5 @@ volumes:
   redis_data:
 
 networks:
-  jwt-network:
+  movie-booking-system:
     driver: bridge

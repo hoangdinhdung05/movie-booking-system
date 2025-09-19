@@ -1,6 +1,6 @@
 package com.hoangdung.movie_booking.dto.response.User;
 
-import com.hoangdung.movie_booking.utils.UserStatus;
+import com.hoangdung.movie_booking.utils.enums.UserStatus;
 import lombok.Builder;
 import lombok.Getter;
 
