@@ -5,12 +5,15 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import java.time.LocalDate;
+import java.util.HashSet;
+import java.util.Set;
 
 @Getter
 @Setter
 @Entity
 @Table(name = "users")
 public class User extends BaseEntity {
+
     @Column(nullable = false, unique = true, length = 50)
     private String username;
 
@@ -40,4 +43,17 @@ public class User extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(length = 20)
     private UserStatus status;
+
+    // ===== Quan hệ với Roles (User <-> Role) =====
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "user_roles",
+            joinColumns = @JoinColumn(name = "user_id"),
+            inverseJoinColumns = @JoinColumn(name = "role_id")
+    )
+    private Set<Role> roles = new HashSet<>();
+
+    // ===== Quan hệ với AuthProviders (User -> AuthProvider) =====
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<AuthProvider> authProviders = new HashSet<>();
 }
