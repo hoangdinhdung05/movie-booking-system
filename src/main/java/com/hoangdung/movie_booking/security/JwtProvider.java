@@ -81,7 +81,8 @@ public class JwtProvider {
                 .build()
                 .parseClaimsJws(token)
                 .getBody();
-        return claims.getExpiration().getTime() - System.currentTimeMillis();
+        long ttl = claims.getExpiration().getTime() - System.currentTimeMillis();
+        return Math.max(ttl, 0);
     }
 
     //========== PRIVATE METHOD ==========//

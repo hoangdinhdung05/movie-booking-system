@@ -5,7 +5,9 @@ import lombok.extern.slf4j.Slf4j;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.BindException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -37,7 +39,7 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(BaseException.class)
     public ResponseEntity<ErrorResponse> handleBaseException(BaseException ex, WebRequest request) {
-        log.error("Business exception occurred: {}", ex.getMessage(), ex);
+        log.error("Business exception occurred: {}", ex.getMessage());
         return buildErrorResponse(ex.getCode(), ex.getMessage(), ex.getHttpStatus(), request, null);
     }
 
@@ -46,7 +48,16 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidationException(MethodArgumentNotValidException ex, WebRequest request) {
-        log.error("Validation exception occurred: {}", ex.getMessage());
+        List<String> messages = ex.getBindingResult()
+                .getFieldErrors()
+                .stream()
+                .map(error -> String.format("%s: %s (rejected: %s)",
+                        error.getField(),
+                        error.getDefaultMessage(),
+                        error.getRejectedValue()))
+                .collect(Collectors.toList());
+
+        log.error("Validation failed: {}", String.join("; ", messages));
 
         List<ErrorResponse.FieldError> fieldErrors = ex.getBindingResult().getFieldErrors()
                 .stream()
@@ -103,7 +114,7 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponse> handleIllegalArgumentException(IllegalArgumentException ex, WebRequest request) {
-        log.error("Illegal argument exception occurred: {}", ex.getMessage(), ex);
+        log.error("Illegal argument exception occurred: {}", ex.getMessage());
         return buildErrorResponse("ILLEGAL_ARGUMENT", ex.getMessage(), HttpStatus.BAD_REQUEST, request, null);
     }
 
@@ -141,6 +152,36 @@ public class GlobalExceptionHandler {
                 "AUTHENTICATION_FAILED",
                 "Authentication failed",
                 HttpStatus.UNAUTHORIZED,
+                request,
+                null
+        );
+    }
+
+    /**
+     * Handle authorization errors when user doesn't have required permissions.
+     */
+    @ExceptionHandler(AuthorizationDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleAuthorizationDeniedException(AuthorizationDeniedException ex, WebRequest request) {
+        log.warn("Authorization denied: {} for path: {}", ex.getMessage(), request.getDescription(false));
+        return buildErrorResponse(
+                "ACCESS_DENIED",
+                "You don't have permission to access this resource",
+                HttpStatus.FORBIDDEN,
+                request,
+                null
+        );
+    }
+
+    /**
+     * Handle access denied errors (fallback for older Spring Security versions).
+     */
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleAccessDeniedException(AccessDeniedException ex, WebRequest request) {
+        log.warn("Access denied: {} for path: {}", ex.getMessage(), request.getDescription(false));
+        return buildErrorResponse(
+                "ACCESS_DENIED",
+                "You don't have permission to access this resource",
+                HttpStatus.FORBIDDEN,
                 request,
                 null
         );

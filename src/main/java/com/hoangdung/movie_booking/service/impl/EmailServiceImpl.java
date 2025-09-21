@@ -25,6 +25,42 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
+/**
+ * Implementation of {@link EmailService} using Spring {@link JavaMailSender} and Thymeleaf {@link TemplateEngine}.
+ * <p>
+ * Supports:
+ * <ul>
+ *   <li>Plain text email (via {@link SimpleMailMessage}).</li>
+ *   <li>HTML email with templates (Thymeleaf/Freemarker).</li>
+ *   <li>Sending to single or multiple recipients.</li>
+ *   <li>Attachments (inline or normal).</li>
+ *   <li>Asynchronous sending using {@code @Async} with {@code mailTaskExecutor}.</li>
+ * </ul>
+ *
+ * <p>Example usage:</p>
+ * <pre>{@code
+ * // Send simple text email
+ * emailService.sendSimpleEmail("user@example.com", "OTP Code", "Your OTP is 123456");
+ *
+ * // Send template email
+ * Map<String, Object> data = Map.of("username", "Dung", "link", resetLink);
+ * emailService.sendTemplateEmail("user@example.com", "Reset Password", "reset_password.html", data);
+ *
+ * // Send async with attachments
+ * EmailDTO dto = EmailDTO.builder()
+ *     .to(List.of("u1@example.com"))
+ *     .subject("Monthly Report")
+ *     .htmlContent("<h1>Report</h1>")
+ *     .attachments(List.of(new AttachmentDTO("report.pdf", pdfBytes, false)))
+ *     .isHtml(true)
+ *     .build();
+ * emailService.sendEmailAsync(dto);
+ * }</pre>
+ *
+ * @author
+ *   Hoàng Đình Dũng
+ * @since 1.0
+ */
 @Service
 @Slf4j
 public class EmailServiceImpl implements EmailService {
