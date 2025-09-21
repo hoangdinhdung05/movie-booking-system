@@ -15,6 +15,8 @@ import com.hoangdung.movie_booking.service.RedisService;
 import com.hoangdung.movie_booking.utils.RedisKeyUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -22,6 +24,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import java.util.Collections;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -66,6 +70,8 @@ public class AuthServiceImpl implements AuthService {
     private final AuthenticationManager authenticationManager;
     private final RedisService redisService;
     private final RedisKeyUtil redisKeyUtil;
+    private final StringRedisTemplate stringRedisTemplate;
+    private static final long REDIS_TTL_BUFFER_MS = 2000L;
 
     /**
      * Authenticate user and generate JWT access + refresh tokens.
@@ -90,10 +96,10 @@ public class AuthServiceImpl implements AuthService {
         Authentication authentication = authenticateUser(request);
 
         String accessToken = jwtProvider.generateAccessToken(authentication);
-        String refreshToken = jwtProvider.generateRefreshToken(user.getUsername());
+        String sessionId = UUID.randomUUID().toString();
+        String refreshToken = jwtProvider.generateRefreshToken(user.getUsername(), sessionId);
 
-        saveTokensInRedis(user.getUsername(), accessToken, refreshToken);
-
+        saveRefreshTokenInRedis(user.getUsername(), sessionId, refreshToken);
         return AuthResponse.builder()
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
@@ -110,27 +116,38 @@ public class AuthServiceImpl implements AuthService {
      */
     @Override
     public RefreshTokenResponse refreshToken(RefreshTokenRequest request) {
-        log.info("Refresh token running");
+        log.info("Refresh token attempt");
 
-        log.info("Request refresh token: {}", request.getRefreshToken());
+        String refreshToken = request.getRefreshToken();
 
-        String username = validateRefreshToken(request.getRefreshToken());
-        String storedRefresh = redisService.getString(redisKeyUtil.refreshTokenKey(username));
-
-        log.info("Stored refresh token: {}", storedRefresh);
-
-        if (storedRefresh == null || !storedRefresh.equals(request.getRefreshToken())) {
-            throw new TokenException("Refresh token invalid or expired");
+        if (!jwtProvider.validateToken(refreshToken)) {
+            throw new TokenException("Invalid or expired refresh token");
         }
 
-        // Generate new tokens (rotation)
+        String username = jwtProvider.getUsernameFromJwtToken(refreshToken);
+        String sessionId = jwtProvider.getSessionIdFromJwtToken(refreshToken);
+        String key = redisKeyUtil.refreshTokenKey(username, sessionId);
+
+        String storedRefresh = redisService.getString(key);
+        log.info("Stored refresh token exists: {}", storedRefresh != null);
+
+        if (storedRefresh == null || !storedRefresh.equals(refreshToken)) {
+            throw new TokenException("Refresh token invalid or already used");
+        }
+
+        // build new tokens
         String newAccessToken = jwtProvider.generateAccessToken(buildAuthenticationFromUser(username));
-        String newRefreshToken = jwtProvider.generateRefreshToken(username);
+        String newRefreshToken = jwtProvider.generateRefreshToken(username, sessionId);
 
-        // Update both tokens in Redis
-        saveTokensInRedis(username, newAccessToken, newRefreshToken);
+        long ttl = jwtProvider.getExpirationFromToken(newRefreshToken);
+        long ttlWithBuffer = Math.max(ttl - REDIS_TTL_BUFFER_MS, 0);
 
-        log.info("Refresh token success for username={}", username);
+        boolean replaced = tryAtomicReplace(key, refreshToken, newRefreshToken, ttlWithBuffer);
+        if (!replaced) {
+            throw new TokenException("Refresh token invalid or already used");
+        }
+
+        log.info("Refresh token rotated for username={} sessionId={}", username, sessionId);
         return RefreshTokenResponse.builder()
                 .accessToken(newAccessToken)
                 .refreshToken(newRefreshToken)
@@ -190,23 +207,48 @@ public class AuthServiceImpl implements AuthService {
      * Save both access token and refresh token in Redis with TTL.
      *
      * @param username     username of the user
-     * @param accessToken  JWT access token
+     * @param sessionId    session id of the user
      * @param refreshToken JWT refresh token
      */
-    private void saveTokensInRedis(String username, String accessToken, String refreshToken) {
-        setTokenInRedis(redisKeyUtil.accessTokenKey(username), accessToken);
-        setTokenInRedis(redisKeyUtil.refreshTokenKey(username), refreshToken);
+    private void saveRefreshTokenInRedis(String username, String sessionId, String refreshToken) {
+        String key = redisKeyUtil.refreshTokenKey(username, sessionId);
+        long ttl = jwtProvider.getExpirationFromToken(refreshToken);
+        long ttlWithBuffer = Math.max(ttl - REDIS_TTL_BUFFER_MS, 0);
+        log.info("Saving refresh token for user={} session={} ttl(ms)={}", username, sessionId, ttlWithBuffer);
+        redisService.set(key, refreshToken, ttlWithBuffer, TimeUnit.MILLISECONDS);
     }
 
     /**
-     * Set a single token into Redis with TTL based on token expiration.
+     * Atomically replaces the stored refresh token in Redis if it matches the expected old value.
+     * <p>
+     * Ensures refresh tokens are single-use (rotation). If the current value in Redis equals
+     * {@code expectedOldValue}, it is replaced with {@code newValue} and a new TTL is set.
+     * Otherwise, returns false.
+     * </p>
      *
-     * @param key   Redis key
-     * @param token JWT token
+     * @param key              Redis key for the refresh token
+     * @param expectedOldValue The old refresh token provided by the client
+     * @param newValue         The new refresh token to store
+     * @param ttlMs            Time-to-live (ms) for the new refresh token
+     * @return {@code true} if replaced successfully, {@code false} if the token was already used or mismatched
      */
-    private void setTokenInRedis(String key, String token) {
-        long ttl = jwtProvider.getExpirationFromToken(token);
-        log.info("Set token in Redis key={} ttl(ms)={}", key, ttl); // Only log key + TTL
-        redisService.set(key, token, ttl, TimeUnit.MILLISECONDS);
+    private boolean tryAtomicReplace(String key, String expectedOldValue, String newValue, long ttlMs) {
+        if (stringRedisTemplate != null) {
+            String script = "if redis.call('GET', KEYS[1]) == ARGV[1] then " +
+                    "redis.call('SET', KEYS[1], ARGV[2], 'PX', ARGV[3]); return 1; else return 0; end";
+            DefaultRedisScript<Long> redisScript = new DefaultRedisScript<>(script, Long.class);
+            Long result = stringRedisTemplate.execute(redisScript,
+                    Collections.singletonList(key),
+                    expectedOldValue, newValue, String.valueOf(ttlMs));
+            return result == 1L;
+        } else {
+            // fallback (non-atomic): acceptable for dev, not for concurrent refresh in production
+            String current = redisService.getString(key);
+            if (expectedOldValue.equals(current)) {
+                redisService.set(key, newValue, ttlMs, TimeUnit.MILLISECONDS);
+                return true;
+            }
+            return false;
+        }
     }
 }

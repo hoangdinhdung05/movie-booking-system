@@ -32,9 +32,10 @@ public class JwtProvider {
         return buildToken(userDetails);
     }
 
-    public String generateRefreshToken(String username) {
+    public String generateRefreshToken(String username, String sessionId) {
         return Jwts.builder()
                 .setSubject(username)
+                .claim("sid", sessionId)
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + refreshExpiration))
                 .signWith(key(), SignatureAlgorithm.HS256)
@@ -83,6 +84,11 @@ public class JwtProvider {
                 .getBody();
         long ttl = claims.getExpiration().getTime() - System.currentTimeMillis();
         return Math.max(ttl, 0);
+    }
+
+    public String getSessionIdFromJwtToken(String token) {
+        Claims c = extractClaims(token);
+        return c.get("sid", String.class);
     }
 
     //========== PRIVATE METHOD ==========//
