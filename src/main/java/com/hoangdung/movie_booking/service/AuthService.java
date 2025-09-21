@@ -49,4 +49,18 @@ public interface AuthService {
      * @throws TokenException if refresh token is invalid or expired
      */
     RefreshTokenResponse refreshToken(RefreshTokenRequest request);
+
+    /**
+     * Logout a user by revoking their refresh token.
+     * <p>
+     * Validates the provided refresh token, checks it against Redis,
+     * and deletes it if valid. This ensures the token cannot be reused
+     * to obtain new access tokens. The access token is not revoked
+     * immediately, but will expire naturally after its short TTL.
+     * </p>
+     *
+     * @param request RefreshTokenRequest containing the refresh token to revoke
+     * @throws TokenException if the refresh token is invalid, expired, or already rotated
+     */
+    void logout(RefreshTokenRequest request);
 }

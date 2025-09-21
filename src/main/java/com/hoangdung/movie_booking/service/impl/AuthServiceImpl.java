@@ -154,6 +154,42 @@ public class AuthServiceImpl implements AuthService {
                 .build();
     }
 
+    /**
+     * Logout a user by revoking their refresh token.
+     * <p>
+     * Validates the provided refresh token, checks it against Redis,
+     * and deletes it if valid. This ensures the token cannot be reused
+     * to obtain new access tokens. The access token is not revoked
+     * immediately, but will expire naturally after its short TTL.
+     * </p>
+     *
+     * @param request RefreshTokenRequest containing the refresh token to revoke
+     * @throws TokenException if the refresh token is invalid, expired, or already rotated
+     */
+    @Override
+    public void logout(RefreshTokenRequest request) {
+        log.info("Logout account running");
+        String refreshToken = request.getRefreshToken();
+        log.info("Refresh token in request: {}", refreshToken);
+
+        if (!jwtProvider.validateToken(refreshToken)) {
+            throw new TokenException("Invalid or expired refresh token");
+        }
+
+        String username = jwtProvider.getUsernameFromJwtToken(refreshToken);
+        String sessionId = jwtProvider.getSessionIdFromJwtToken(refreshToken);
+
+        String key = redisKeyUtil.refreshTokenKey(username, sessionId);
+        boolean deleted = redisService.delete(key);
+
+        if (!deleted) {
+            throw new TokenException("Refresh token invalid or already used");
+        }
+
+        log.info("User {} logged out. Refresh token revoked for session {}", username, sessionId);
+    }
+
+
     //================ PRIVATE METHODS =================//
 
     /**
@@ -187,20 +223,6 @@ public class AuthServiceImpl implements AuthService {
         var user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         return new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
-    }
-
-    /**
-     * Validate a refresh token and return the username.
-     *
-     * @param refreshToken JWT refresh token
-     * @return username encoded in the token
-     * @throws TokenException if token is invalid or expired
-     */
-    private String validateRefreshToken(String refreshToken) {
-        if (!jwtProvider.validateToken(refreshToken)) {
-            throw new TokenException("Invalid or expired refresh token");
-        }
-        return jwtProvider.getUsernameFromJwtToken(refreshToken);
     }
 
     /**
