@@ -20,4 +20,5 @@ public class OtpProperties {
     private int verifyKeyExpiryMinutes;
     private int maxSendCount;
     private int resendLimitMinutes;
+    private int otpLength;
 }

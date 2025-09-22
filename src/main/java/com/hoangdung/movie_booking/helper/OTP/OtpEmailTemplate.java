@@ -1,4 +1,4 @@
-package com.hoangdung.movie_booking.helper;
+package com.hoangdung.movie_booking.helper.OTP;
 
 import com.hoangdung.movie_booking.entity.User;
 import com.hoangdung.movie_booking.utils.enums.OtpType;

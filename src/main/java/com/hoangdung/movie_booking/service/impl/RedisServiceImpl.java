@@ -1,5 +1,7 @@
 package com.hoangdung.movie_booking.service.impl;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hoangdung.movie_booking.service.RedisService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -47,6 +49,7 @@ import java.util.concurrent.TimeUnit;
 public class RedisServiceImpl implements RedisService {
 
     private final StringRedisTemplate stringRedisTemplate;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
      * Save a key-value pair in Redis without TTL.
@@ -115,6 +118,25 @@ public class RedisServiceImpl implements RedisService {
         } catch (Exception e) {
             log.error("Error getting key={} as String", key, e);
             return null;
+        }
+    }
+
+    /**
+     * Lấy object từ Redis và deserialize JSON
+     *
+     * @param key   khóa để get
+     * @param clazz lớp
+     * @return trả về Object
+     */
+    @Override
+    public <T> T getObject(String key, Class<T> clazz) {
+        String json = getString(key);
+        if (json == null) return null;
+        try {
+            return objectMapper.readValue(json, clazz);
+        } catch (JsonProcessingException e) {
+            log.error("Failed to deserialize Redis value for key={}", key, e);
+            throw new RuntimeException(e);
         }
     }
 
