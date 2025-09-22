@@ -33,6 +33,15 @@ public interface RedisService {
     String getString(String key);
 
     /**
+     * Lấy object từ Redis và deserialize JSON
+     * @param key khóa để get
+     * @param clazz lớp
+     * @return trả về Object
+     * @param <T> Generics
+     */
+    <T> T getObject(String key, Class<T> clazz);
+
+    /**
      * Xóa key
      * @param key key
      * @return true/false
