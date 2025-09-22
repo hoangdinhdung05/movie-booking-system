@@ -1,18 +1,29 @@
 package com.hoangdung.movie_booking.service.impl;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.hoangdung.movie_booking.config.OtpProperties;
+import com.hoangdung.movie_booking.dto.EmailDTO;
 import com.hoangdung.movie_booking.dto.response.OTP.ResendOtpRequest;
 import com.hoangdung.movie_booking.dto.response.OTP.SendOtpRequest;
 import com.hoangdung.movie_booking.dto.response.OTP.VerifyOtpRequest;
 import com.hoangdung.movie_booking.entity.User;
+import com.hoangdung.movie_booking.exception.OtpException;
+import com.hoangdung.movie_booking.helper.OtpEmailTemplate;
 import com.hoangdung.movie_booking.repository.UserRepository;
 import com.hoangdung.movie_booking.service.EmailService;
 import com.hoangdung.movie_booking.service.OtpService;
+import com.hoangdung.movie_booking.service.RedisService;
+import com.hoangdung.movie_booking.service.UserService;
+import com.hoangdung.movie_booking.utils.OtpRedisKeyUtil;
 import com.hoangdung.movie_booking.utils.enums.OtpType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
+import java.security.SecureRandom;
+import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+
+import static com.hoangdung.movie_booking.utils.OtpRedisKeyUtil.otpCountKey;
 
 /**
  * Implementation of {@link OtpService} using Redis for high-performance OTP management.
@@ -56,14 +67,11 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class OtpServiceImpl implements OtpService {
 
-    private final StringRedisTemplate redisTemplate;
-    private final UserRepository userRepo;
+    private final RedisService redisService;
+    private final UserRepository userRepository;
+    private final UserService userService;
     private final EmailService emailService;
-    private final ObjectMapper objectMapper = new ObjectMapper();
-
-    private static final int OTP_EXPIRY_MINUTES = 5;
-    private static final int VERIFY_KEY_EXPIRY_MINUTES = 5;
-    private static final int MAX_OTP_SEND_COUNT = 5;
+    private final OtpProperties otpProperties;
 
     /**
      * Send a new OTP to the user for the specified operation type.
@@ -73,7 +81,18 @@ public class OtpServiceImpl implements OtpService {
      */
     @Override
     public void sendOtp(SendOtpRequest request, OtpType type) {
+        log.info("Send OTP running with email: {}", request.getEmail());
 
+        User user = userService.getUserByEmail(request.getEmail());
+        validateOtpSendAllowed(user.getEmail(), type);
+
+        String otp = generateOtp();
+        storeOtp(user.getEmail(), otp, type);
+        updateOtpSendCount(user.getEmail(), type);
+
+        sendOtpEmail(user, otp, type);
+
+        log.info("Sent OTP to {} and type {}", user.getEmail(), type);
     }
 
     /**
@@ -83,7 +102,8 @@ public class OtpServiceImpl implements OtpService {
      */
     @Override
     public void resendOtp(ResendOtpRequest request) {
-
+        log.info("Resend OTP running");
+        sendOtp(new SendOtpRequest(request.getEmail()), request.getType());
     }
 
     /**
@@ -94,7 +114,13 @@ public class OtpServiceImpl implements OtpService {
      */
     @Override
     public String verifyOtp(VerifyOtpRequest request) {
-        return "";
+        log.info("Verify OTP running");
+
+        validateOtp(request.getEmail(), request.getOtp(), OtpType.RESET_PASSWORD);
+
+        String verifyKey = buildVerifyKey(request.getEmail());
+        log.info("Verified OTP for email={}, verifyKey={}", request.getEmail(), verifyKey);
+        return verifyKey;
     }
 
     /**
@@ -104,7 +130,15 @@ public class OtpServiceImpl implements OtpService {
      */
     @Override
     public void verifyEmail(VerifyOtpRequest request) {
+        log.info("Verify email running with email: {}", request.getEmail());
 
+        validateOtp(request.getEmail(), request.getOtp(), OtpType.VERIFY_EMAIL);
+
+        User user = userService.getUserByEmail(request.getEmail());
+        user.setEmailVerified(true);
+        userRepository.save(user);
+
+        log.info("User {} verified successfully", user.getEmail());
     }
 
     /**
@@ -115,6 +149,91 @@ public class OtpServiceImpl implements OtpService {
      */
     @Override
     public User confirmVerifyKey(String verifyKey) {
-        return null;
+        log.info("Confirm verify key running");
+
+        String email = redisService.getString(OtpRedisKeyUtil.verifyKey(verifyKey));
+        if (email == null) {
+            throw new OtpException("Verify key invalid or expired.");
+        }
+
+        User user = userService.getUserByEmail(email);
+        redisService.delete(OtpRedisKeyUtil.verifyKey(verifyKey));
+
+        log.info("Confirmed verifyKey={} for user={}", verifyKey, user.getId());
+        return user;
+    }
+
+    // ==================== PRIVATE HELPERS ====================
+
+    /** Validate if OTP can be sent (not expired & under max send count). */
+    private void validateOtpSendAllowed(String email, OtpType type) {
+        String otpKey = OtpRedisKeyUtil.otpKey(email, type);
+        String countKey = otpCountKey(email, type);
+
+        if (redisService.existsKey(otpKey)) {
+            throw new OtpException("OTP has been sent. Please check your email.");
+        }
+
+        int count = parseCount(redisService.getString(countKey));
+        if (count >= otpProperties.getMaxSendCount()) {
+            throw new OtpException("You have sent OTP too many times. Try again later.");
+        }
+    }
+
+    /** Validate the OTP input against stored value. */
+    private void validateOtp(String email, String inputOtp, OtpType type) {
+        String otpKey = OtpRedisKeyUtil.otpKey(email, type);
+        String storedOtp = redisService.getString(otpKey);
+
+        if (storedOtp == null || !storedOtp.equals(inputOtp)) {
+            throw new OtpException("Invalid or expired OTP code.");
+        }
+
+        redisService.delete(otpKey);
+    }
+
+    /** Generate a random 6-digit OTP. */
+    private String generateOtp() {
+        SecureRandom secureRandom = new SecureRandom();
+        return String.format("%06d", secureRandom.nextInt(1_000_000));
+    }
+
+    /** Store OTP in Redis with expiry time. */
+    private void storeOtp(String email, String otp, OtpType type) {
+        String otpKey = OtpRedisKeyUtil.otpKey(email, type);
+        redisService.set(otpKey, otp, otpProperties.getExpiryMinutes(), TimeUnit.MINUTES);
+    }
+
+    /** Update OTP send count with rate-limiting. */
+    private void updateOtpSendCount(String email, OtpType type) {
+        String countKey = otpCountKey(email, type);
+        int count = parseCount(redisService.getString(countKey));
+        redisService.set(countKey, String.valueOf(count + 1),
+                otpProperties.getResendLimitMinutes(), TimeUnit.MINUTES);
+    }
+
+    /** Build and send OTP email. */
+    private void sendOtpEmail(User user, String otp, OtpType type) {
+        EmailDTO email = EmailDTO.builder()
+                .to(List.of(user.getEmail()))
+                .subject("Mã OTP xác thực")
+                .textContent(OtpEmailTemplate.buildContent(user, otp, type, otpProperties.getExpiryMinutes()))
+                .isHtml(false)
+                .build();
+
+        emailService.sendEmailAsync(email);
+    }
+
+    /** Build verify key and store in Redis. */
+    private String buildVerifyKey(String email) {
+        String verifyKey = UUID.randomUUID().toString();
+        String redisKey = OtpRedisKeyUtil.verifyKey(verifyKey);
+        redisService.set(redisKey, email, otpProperties.getVerifyKeyExpiryMinutes(), TimeUnit.MINUTES);
+        return verifyKey;
+    }
+
+    /** Parse integer safely from Redis string. */
+    private int parseCount(String countStr) {
+        return (countStr != null) ? Integer.parseInt(countStr) : 0;
     }
 }

@@ -116,6 +116,14 @@ app:
       token: 86400
       refresh: 604800
 
+#Config value redis
+otp:
+  expiry-minutes: 5
+  verify-key-expiry-minutes: 5
+  max-send-count: 5
+  resend-limit-minutes: 5
+
+
 #Logging config
 logging:
   level:

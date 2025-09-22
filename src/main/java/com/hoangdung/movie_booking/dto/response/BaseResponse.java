@@ -25,6 +25,14 @@ public class BaseResponse<T> {
                 .build();
     }
 
+    public static <T> BaseResponse<T> success(String message) {
+        return BaseResponse.<T>builder()
+                .success(true)
+                .message("Success")
+                .timestamp(LocalDateTime.now())
+                .build();
+    }
+
     public static <T> BaseResponse<T> success(String message, T data) {
         return BaseResponse.<T>builder()
                 .success(true)

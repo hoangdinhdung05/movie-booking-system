@@ -18,5 +18,5 @@ public class VerifyOtpRequest {
 
     @Schema(description = "Mã OTP", example = "123456")
     @NotBlank(message = "OTP cannot null")
-    private String code;
+    private String otp;
 }
