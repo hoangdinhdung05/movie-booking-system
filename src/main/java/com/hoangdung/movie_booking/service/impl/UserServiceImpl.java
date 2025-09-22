@@ -1,5 +1,8 @@
 package com.hoangdung.movie_booking.service.impl;
 
+import com.hoangdung.movie_booking.entity.User;
+import com.hoangdung.movie_booking.exception.ResourceNotFoundException;
+import com.hoangdung.movie_booking.repository.UserRepository;
 import com.hoangdung.movie_booking.dto.response.User.UserResponse;
 import com.hoangdung.movie_booking.entity.User;
 import com.hoangdung.movie_booking.exception.ResourceNotFoundException;
@@ -15,6 +18,18 @@ import org.springframework.stereotype.Service;
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
+
+    /**
+     * Find user by email
+     *
+     * @param email userId
+     * @return Get info user
+     */
+    @Override
+    public User getUserByEmail(String email) {
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+    }
 
     /**
      * Find user by userId

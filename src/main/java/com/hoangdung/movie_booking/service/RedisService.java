@@ -64,6 +64,15 @@ public interface RedisService {
     String getString(String key);
 
     /**
+     * Lấy object từ Redis và deserialize JSON
+     * @param key khóa để get
+     * @param clazz lớp
+     * @return trả về Object
+     * @param <T> Generics
+     */
+    <T> T getObject(String key, Class<T> clazz);
+
+    /**
      * Delete a key from Redis.
      *
      * @param key Redis key
@@ -72,10 +81,9 @@ public interface RedisService {
     boolean delete(String key);
 
     /**
-     * Check if a key exists in Redis.
-     *
-     * @param key Redis key
-     * @return {@code true} if exists, {@code false} otherwise
+     * Check key
+     * @param key key
+     * @return true/false
      */
     boolean existsKey(String key);
 
