@@ -2,9 +2,7 @@ package com.hoangdung.movie_booking.entity;
 
 import com.hoangdung.movie_booking.utils.enums.UserStatus;
 import jakarta.persistence.*;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -18,6 +16,8 @@ import java.util.Set;
 @Entity
 @Table(name = "users")
 @Builder
+@AllArgsConstructor
+@NoArgsConstructor
 public class User extends BaseEntity implements UserDetails {
 
     @Column(nullable = false, unique = true, length = 50)

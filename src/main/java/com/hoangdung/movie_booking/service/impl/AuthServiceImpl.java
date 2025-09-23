@@ -4,6 +4,7 @@ import com.hoangdung.movie_booking.dto.request.LoginRequest;
 import com.hoangdung.movie_booking.dto.request.RefreshTokenRequest;
 import com.hoangdung.movie_booking.dto.response.AuthResponse;
 import com.hoangdung.movie_booking.dto.response.OTP.SendOtpRequest;
+import com.hoangdung.movie_booking.dto.response.OTP.VerifyOtpRequest;
 import com.hoangdung.movie_booking.dto.response.RefreshTokenResponse;
 import com.hoangdung.movie_booking.dto.response.User.RegisterRequest;
 import com.hoangdung.movie_booking.entity.User;
@@ -229,6 +230,25 @@ public class AuthServiceImpl implements AuthService {
         } catch (Exception e) {
             throw new OtpException("Sendmail register error");
         }
+    }
+
+    /**
+     * Activates (verifies) a user's email using the provided OTP request.
+     * <p>
+     * This method is typically called from the OTP service logic to validate
+     * the OTP associated with the given email. If the OTP is valid, the user’s
+     * email is marked as verified in the system.
+     *
+     * @param request the {@link VerifyOtpRequest} containing the email and OTP
+     *                used for verification
+     * @throws OtpException              if the provided OTP is invalid or expired
+     * @throws ResourceNotFoundException if no user is found for the provided email
+     * @see OtpServiceImpl#verifyEmail(VerifyOtpRequest)
+     */
+    @Override
+    public void active(VerifyOtpRequest request) {
+        log.info("Call logic active account");
+        otpService.verifyEmail(request);
     }
 
 

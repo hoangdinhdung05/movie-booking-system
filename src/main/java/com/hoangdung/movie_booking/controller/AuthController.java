@@ -4,6 +4,7 @@ import com.hoangdung.movie_booking.dto.request.LoginRequest;
 import com.hoangdung.movie_booking.dto.request.RefreshTokenRequest;
 import com.hoangdung.movie_booking.dto.response.AuthResponse;
 import com.hoangdung.movie_booking.dto.response.BaseResponse;
+import com.hoangdung.movie_booking.dto.response.OTP.VerifyOtpRequest;
 import com.hoangdung.movie_booking.dto.response.RefreshTokenResponse;
 import com.hoangdung.movie_booking.dto.response.User.RegisterRequest;
 import com.hoangdung.movie_booking.service.AuthService;
@@ -109,5 +110,29 @@ public class AuthController {
         log.info("Call api register running");
         authService.register(request);
         return ResponseEntity.ok(BaseResponse.success("Register new account successfully"));
+    }
+
+    /**
+     * Verifies and activates a user's account using the provided OTP.
+     * <p>
+     * This endpoint accepts an OTP verification request and triggers the
+     * activation logic. If the OTP is valid, the user's email is marked as
+     * verified and the account becomes active.
+     *
+     * @param request the {@link VerifyOtpRequest} containing the email and OTP 
+     *                to be validated
+     * @return a {@link ResponseEntity} containing a success response message 
+     *         if the account was activated successfully
+     *
+     * @apiNote This endpoint should be called after a user has registered 
+     *          and received an OTP via email.
+     *
+     * @see com.hoangdung.movie_booking.service.OtpService#verifyEmail(VerifyOtpRequest) (VerifyOtpRequest)
+     */
+    @PostMapping("/active")
+    public ResponseEntity<?> verifyEmail(@RequestBody @Valid VerifyOtpRequest request) {
+        log.info("[AUTH] Verifying email for: {}", request.getEmail());
+        authService.active(request);
+        return ResponseEntity.ok(BaseResponse.success("ACTIVE ACCOUNT SUCCESS"));
     }
 }
