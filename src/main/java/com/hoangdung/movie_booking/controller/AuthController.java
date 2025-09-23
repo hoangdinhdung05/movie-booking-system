@@ -1,16 +1,19 @@
 package com.hoangdung.movie_booking.controller;
 
-import com.hoangdung.movie_booking.dto.request.LoginRequest;
-import com.hoangdung.movie_booking.dto.request.RefreshTokenRequest;
-import com.hoangdung.movie_booking.dto.response.AuthResponse;
-import com.hoangdung.movie_booking.dto.response.BaseResponse;
+import com.hoangdung.movie_booking.dto.request.Auth.LoginRequest;
+import com.hoangdung.movie_booking.dto.request.Auth.RefreshTokenRequest;
+import com.hoangdung.movie_booking.dto.request.Auth.ResetPasswordRequest;
+import com.hoangdung.movie_booking.dto.response.Auth.AuthResponse;
+import com.hoangdung.movie_booking.dto.response.OTP.SendOtpRequest;
+import com.hoangdung.movie_booking.dto.response.System.BaseResponse;
 import com.hoangdung.movie_booking.dto.response.OTP.VerifyOtpRequest;
-import com.hoangdung.movie_booking.dto.response.RefreshTokenResponse;
+import com.hoangdung.movie_booking.dto.response.Auth.RefreshTokenResponse;
 import com.hoangdung.movie_booking.dto.response.User.RegisterRequest;
 import com.hoangdung.movie_booking.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -135,4 +138,58 @@ public class AuthController {
         authService.active(request);
         return ResponseEntity.ok(BaseResponse.success("ACTIVE ACCOUNT SUCCESS"));
     }
+
+    /**
+     * Endpoint to request a forgot password OTP.
+     *
+     * <p>
+     * This API triggers sending a one-time password (OTP) to the user's registered email
+     * to start the password reset process.
+     * </p>
+     *
+     * @param request the request containing the user's email
+     * @return {@link ResponseEntity} with a success message indicating that the OTP has been sent
+     */
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@RequestBody @Valid SendOtpRequest request) {
+        log.info("[AUTH] Sending OTP to email: {}", request.getEmail());
+        authService.forgotPassword(request);
+        return ResponseEntity.ok(BaseResponse.success("CHECK FORGOT PASSWORD"));
+    }
+
+    /**
+     * Endpoint to verify the OTP sent for password reset.
+     *
+     * <p>
+     * This API verifies the OTP provided by the user for the password reset process.
+     * If valid, it returns a temporary verify key to authorize the password reset.
+     * </p>
+     *
+     * @param request the request containing the user's email and OTP code
+     * @return {@link ResponseEntity} containing the temporary verify key
+     */
+    @PostMapping("/reset-password/otp/verify")
+    public ResponseEntity<?> verifyResetPassword(@RequestBody @Valid VerifyOtpRequest request) {
+        log.info("[AUTH] Verifying OTP for reset password for email: {}", request.getEmail());
+        return ResponseEntity.ok(BaseResponse.success(authService.verifyResetPassword(request)));
+    }
+
+    /**
+     * Endpoint to reset the user's password using a valid verify key.
+     *
+     * <p>
+     * This API allows the user to set a new password after successfully verifying the OTP
+     * and obtaining a temporary verify key.
+     * </p>
+     *
+     * @param request the request containing the verify key and the new password
+     * @return {@link ResponseEntity} with a success message indicating that the password has been reset
+     */
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@RequestBody @Valid ResetPasswordRequest request) {
+        log.info("[AUTH] Reset password request for verifyKey: {}", request.getVerifyKey());
+        authService.resetPassword(request);
+        return ResponseEntity.ok(BaseResponse.success("RESET PASSWORD SUCCESS"));
+    }
+
 }

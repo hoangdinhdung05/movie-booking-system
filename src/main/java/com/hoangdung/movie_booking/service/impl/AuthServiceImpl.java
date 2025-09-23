@@ -1,11 +1,12 @@
 package com.hoangdung.movie_booking.service.impl;
 
-import com.hoangdung.movie_booking.dto.request.LoginRequest;
-import com.hoangdung.movie_booking.dto.request.RefreshTokenRequest;
-import com.hoangdung.movie_booking.dto.response.AuthResponse;
+import com.hoangdung.movie_booking.dto.request.Auth.LoginRequest;
+import com.hoangdung.movie_booking.dto.request.Auth.RefreshTokenRequest;
+import com.hoangdung.movie_booking.dto.request.Auth.ResetPasswordRequest;
+import com.hoangdung.movie_booking.dto.response.Auth.AuthResponse;
 import com.hoangdung.movie_booking.dto.response.OTP.SendOtpRequest;
 import com.hoangdung.movie_booking.dto.response.OTP.VerifyOtpRequest;
-import com.hoangdung.movie_booking.dto.response.RefreshTokenResponse;
+import com.hoangdung.movie_booking.dto.response.Auth.RefreshTokenResponse;
 import com.hoangdung.movie_booking.dto.response.User.RegisterRequest;
 import com.hoangdung.movie_booking.entity.User;
 import com.hoangdung.movie_booking.exception.*;
@@ -27,8 +28,10 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import java.util.Collections;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -77,6 +80,7 @@ public class AuthServiceImpl implements AuthService {
     private final RedisService redisService;
     private final RedisKeyUtil redisKeyUtil;
     private final StringRedisTemplate stringRedisTemplate;
+    private final PasswordEncoder passwordEncoder;
     private static final long REDIS_TTL_BUFFER_MS = 2000L;
 
     /**
@@ -251,6 +255,57 @@ public class AuthServiceImpl implements AuthService {
         otpService.verifyEmail(request);
     }
 
+    /**
+     * Sends a one-time password (OTP) to the user's email for password reset.
+     * <p>
+     * This method delegates the OTP generation and sending logic to the {@code otpService}.
+     * The OTP type used is {@link OtpType#RESET_PASSWORD}.
+     *
+     * @param request the request containing the user's email to send the OTP to
+     * @throws OtpException if sending the OTP fails (e.g., email service failure)
+     */
+    @Override
+    public void forgotPassword(SendOtpRequest request) {
+        log.info("Call logic SendOTP");
+        otpService.sendOtp(request, OtpType.RESET_PASSWORD);
+    }
+
+    /**
+     * Verifies the OTP provided by the user for password reset.
+     * <p>
+     * This method delegates the verification logic to the {@code otpService}.
+     *
+     * @param request the request containing the user's email and the OTP to verify
+     * @return a message indicating whether the OTP verification was successful
+     * @throws OtpException if the OTP is invalid or expired
+     */
+    @Override
+    public String verifyResetPassword(VerifyOtpRequest request) {
+        log.info("Call logic verify otp");
+        return otpService.verifyOtp(request);
+    }
+
+    /**
+     * Resets the user's password.
+     * <p>
+     * This method should contain the logic to update the user's password directly in the authentication system.
+     * Before calling this method, it is expected that the OTP verification has already succeeded.
+     *
+     * @param request the request containing the user's email and the new password
+     * @throws BusinessException if resetting the password fails (e.g., user not found, validation error)
+     */
+    @Override
+    public void resetPassword(ResetPasswordRequest request) {
+        if (!Objects.equals(request.getConfirmPassword(), request.getNewPassword())) {
+            throw new BusinessException("Confirmation password does not match");
+        }
+
+        //check verifyKey
+        User user = otpService.confirmVerifyKey(request.getVerifyKey());
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+    }
 
     //================ PRIVATE METHODS =================//
 
