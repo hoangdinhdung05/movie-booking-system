@@ -12,10 +12,13 @@ import com.hoangdung.movie_booking.repository.UserRepository;
 import com.hoangdung.movie_booking.dto.response.User.UserResponse;
 import com.hoangdung.movie_booking.service.UserService;
 import com.hoangdung.movie_booking.utils.enums.RoleType;
+import com.hoangdung.movie_booking.utils.enums.UserStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import java.util.Set;
 
 @Service
@@ -24,9 +27,10 @@ import java.util.Set;
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
-    private final UserValidateField validateField;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
+    private final UserValidateField validateField;
+    private final RoleValidate roleValidate;
 
     /**
      * Find user by email
@@ -58,11 +62,13 @@ public class UserServiceImpl implements UserService {
                 .build();
     }
 
+    @Transactional
     @Override
     public void createUser(RegisterRequest request) {
         log.info("Create a user by registering an account");
 
         validateField.validateUserUniqueFields(request.getUsername(), request.getEmail());
+
         Role role = roleRepository.findByName(RoleType.USER)
                 .orElseThrow(() -> new ResourceNotFoundException("Role user not found"));
 
@@ -72,6 +78,7 @@ public class UserServiceImpl implements UserService {
                 .email(request.getEmail().toLowerCase())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .emailVerified(false)
+                .status(UserStatus.ACTIVE)
                 .build();
         user.getRoles().add(role);
 
@@ -83,17 +90,18 @@ public class UserServiceImpl implements UserService {
     public void adminCreateUser(AdminCreateUserRequest request) {
         log.info("Admin create new user");
 
+        UserValidateField validateField = new UserValidateField(userRepository);
         validateField.validateUserUniqueFields(request.getUsername(), request.getEmail());
 
-        RoleValidate roleValidator = new RoleValidate(roleRepository);
-        Set<Role> roles = roleValidator.validateAndGetRoles(request.getRoles());
+        Set<Role> roles = roleValidate.validateAndGetRoles(request.getRoles());
 
         User user = User.builder()
                 .name(request.getName())
                 .username(request.getUsername())
                 .email(request.getEmail().toLowerCase())
                 .password(passwordEncoder.encode(request.getPassword()))
-                .emailVerified(false)
+                .emailVerified(true)
+                .status(UserStatus.ACTIVE)
                 .build();
         user.setRoles(roles);
 

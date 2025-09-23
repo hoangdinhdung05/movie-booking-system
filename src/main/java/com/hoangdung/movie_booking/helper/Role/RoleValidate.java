@@ -4,12 +4,17 @@ import com.hoangdung.movie_booking.entity.Role;
 import com.hoangdung.movie_booking.exception.ResourceNotFoundException;
 import com.hoangdung.movie_booking.repository.RoleRepository;
 import com.hoangdung.movie_booking.utils.enums.RoleType;
-
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public record RoleValidate(RoleRepository roleRepository) {
+@Component
+@RequiredArgsConstructor
+public class RoleValidate {
+
+    private final RoleRepository roleRepository;
 
     public Set<Role> validateAndGetRoles(Set<RoleType> requestRole) {
         //Null -> default role(User)

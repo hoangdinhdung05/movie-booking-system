@@ -80,6 +80,30 @@ public class AuthController {
         return ResponseEntity.noContent().build();
     }
 
+    /**
+     * API endpoint for user registration.
+     * <p>
+     * Endpoint: {@code POST /api/auth/register}
+     * <p>
+     * Workflow:
+     * <ul>
+     *   <li>Accepts user information from {@link RegisterRequest} (name, username, email, password, ...).</li>
+     *   <li>Delegates the registration process to {@link AuthService#register(RegisterRequest)}
+     *       which creates a new user with the default {@code USER} role.</li>
+     *   <li>After successful registration, the system sends an OTP to the provided email
+     *       for account verification.</li>
+     * </ul>
+     *
+     * @param request {@link RegisterRequest} containing user registration details:
+     *                <ul>
+     *                  <li>{@code username} - unique username.</li>
+     *                  <li>{@code email} - unique email, also used for OTP delivery.</li>
+     *                  <li>{@code password} - user password (validated for length and format).</li>
+     *                  <li>{@code name} - full name of the user.</li>
+     *                </ul>
+     * @return {@link ResponseEntity} with a success message if registration and OTP sending succeed.
+     * @throws com.hoangdung.movie_booking.exception.OtpException if sending the OTP email fails.
+     */
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody @Valid RegisterRequest request) {
         log.info("Call api register running");

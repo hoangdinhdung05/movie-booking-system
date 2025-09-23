@@ -3,9 +3,16 @@ package com.hoangdung.movie_booking.helper.User;
 import com.hoangdung.movie_booking.entity.User;
 import com.hoangdung.movie_booking.exception.UserAlreadyExistsException;
 import com.hoangdung.movie_booking.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
 import java.util.Optional;
 
-public record UserValidateField(UserRepository userRepository) {
+@Component
+@RequiredArgsConstructor
+public class UserValidateField {
+
+    private final UserRepository userRepository;
+
     public void validateUserUniqueFields(String username, String email) {
         Optional<User> existingUser = userRepository.findByUsernameOrEmail(username, email);
         if (existingUser.isPresent()) {

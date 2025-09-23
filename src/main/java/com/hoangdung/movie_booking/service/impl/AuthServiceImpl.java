@@ -3,19 +3,19 @@ package com.hoangdung.movie_booking.service.impl;
 import com.hoangdung.movie_booking.dto.request.LoginRequest;
 import com.hoangdung.movie_booking.dto.request.RefreshTokenRequest;
 import com.hoangdung.movie_booking.dto.response.AuthResponse;
+import com.hoangdung.movie_booking.dto.response.OTP.SendOtpRequest;
 import com.hoangdung.movie_booking.dto.response.RefreshTokenResponse;
 import com.hoangdung.movie_booking.dto.response.User.RegisterRequest;
 import com.hoangdung.movie_booking.entity.User;
-import com.hoangdung.movie_booking.exception.BusinessException;
-import com.hoangdung.movie_booking.exception.ResourceNotFoundException;
-import com.hoangdung.movie_booking.exception.TokenException;
-import com.hoangdung.movie_booking.exception.UserAlreadyExistsException;
+import com.hoangdung.movie_booking.exception.*;
 import com.hoangdung.movie_booking.repository.UserRepository;
 import com.hoangdung.movie_booking.security.JwtProvider;
 import com.hoangdung.movie_booking.service.AuthService;
+import com.hoangdung.movie_booking.service.OtpService;
 import com.hoangdung.movie_booking.service.RedisService;
 import com.hoangdung.movie_booking.service.UserService;
 import com.hoangdung.movie_booking.utils.RedisKeyUtil;
+import com.hoangdung.movie_booking.utils.enums.OtpType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -69,6 +69,7 @@ import java.util.concurrent.TimeUnit;
 public class AuthServiceImpl implements AuthService {
 
     private final UserService userService;
+    private final OtpService otpService;
     private final UserRepository userRepository;
     private final JwtProvider jwtProvider;
     private final AuthenticationManager authenticationManager;
@@ -213,7 +214,21 @@ public class AuthServiceImpl implements AuthService {
      */
     @Override
     public void register(RegisterRequest request) {
+        log.info("Call logic register userService");
 
+        userService.createUser(request);
+        log.info("Register successfully with username: {}", request.getUsername());
+
+        log.info("Sendmail active email running");
+
+        try {
+            otpService.sendOtp(SendOtpRequest.builder()
+                            .email(request.getEmail())
+                    .build(), OtpType.VERIFY_EMAIL);
+            log.info("Sendmail success");
+        } catch (Exception e) {
+            throw new OtpException("Sendmail register error");
+        }
     }
 
 
