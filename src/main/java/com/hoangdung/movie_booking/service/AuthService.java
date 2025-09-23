@@ -4,6 +4,7 @@ import com.hoangdung.movie_booking.dto.request.LoginRequest;
 import com.hoangdung.movie_booking.dto.request.RefreshTokenRequest;
 import com.hoangdung.movie_booking.dto.response.AuthResponse;
 import com.hoangdung.movie_booking.dto.response.RefreshTokenResponse;
+import com.hoangdung.movie_booking.dto.response.User.RegisterRequest;
 import com.hoangdung.movie_booking.exception.BusinessException;
 import com.hoangdung.movie_booking.exception.TokenException;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -63,4 +64,25 @@ public interface AuthService {
      * @throws TokenException if the refresh token is invalid, expired, or already rotated
      */
     void logout(RefreshTokenRequest request);
+
+
+    /**
+     * Registers a new user in the system.
+     * <p>
+     * This method is typically invoked during the user creation flow inside
+     * {@link UserService}, where it handles the registration logic such as:
+     * <ul>
+     *     <li>Validating the provided {@link RegisterRequest} data.</li>
+     *     <li>Creating a new user entity and persisting it into the database.</li>
+     *     <li>Applying necessary business rules (e.g., encoding password, setting default roles).</li>
+     *     <li>Triggering additional post-registration steps (e.g., sending verification email or OTP).</li>
+     * </ul>
+     *
+     * @param request the {@link RegisterRequest} containing user details (e.g., email, password, name)
+     *                required for creating a new account; must not be {@code null}.
+     * @throws IllegalArgumentException if the request contains invalid or incomplete data.
+     * @throws com.hoangdung.movie_booking.exception.UserAlreadyExistsException if a user with the same unique identifier (e.g., email)
+     *                                    already exists in the system.
+     */
+    void register(RegisterRequest request);
 }

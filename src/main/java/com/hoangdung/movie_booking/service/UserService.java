@@ -1,5 +1,7 @@
 package com.hoangdung.movie_booking.service;
 
+import com.hoangdung.movie_booking.dto.response.User.AdminCreateUserRequest;
+import com.hoangdung.movie_booking.dto.response.User.RegisterRequest;
 import com.hoangdung.movie_booking.dto.response.User.UserResponse;
 import com.hoangdung.movie_booking.entity.User;
 
@@ -19,5 +21,9 @@ public interface UserService {
      * @return Get info user
      */
     UserResponse getUserById(Long id);
+
+    void createUser(RegisterRequest request);
+
+    void adminCreateUser(AdminCreateUserRequest request);
 
 }

@@ -1,9 +1,10 @@
 package com.hoangdung.movie_booking.dto.response.User;
 
-import com.hoangdung.movie_booking.entity.Role;
+import com.hoangdung.movie_booking.utils.enums.RoleType;
 import com.hoangdung.movie_booking.utils.validator.ValidEmail;
 import com.hoangdung.movie_booking.utils.validator.ValidPassword;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import java.util.Set;
@@ -26,7 +27,7 @@ public class AdminCreateUserRequest {
     @ValidPassword
     private String password;
 
-    @NotBlank
-    private Set<Role> roles;
-
+    @NotNull(message = "Roles must not be null")
+    @Size(min = 1, message = "At least one role is required")
+    private Set<RoleType> roles;
 }

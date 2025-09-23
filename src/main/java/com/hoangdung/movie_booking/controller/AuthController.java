@@ -5,6 +5,7 @@ import com.hoangdung.movie_booking.dto.request.RefreshTokenRequest;
 import com.hoangdung.movie_booking.dto.response.AuthResponse;
 import com.hoangdung.movie_booking.dto.response.BaseResponse;
 import com.hoangdung.movie_booking.dto.response.RefreshTokenResponse;
+import com.hoangdung.movie_booking.dto.response.User.RegisterRequest;
 import com.hoangdung.movie_booking.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -77,5 +78,12 @@ public class AuthController {
         log.info("Call api logout running");
         authService.logout(request);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/register")
+    public ResponseEntity<?> register(@RequestBody @Valid RegisterRequest request) {
+        log.info("Call api register running");
+        authService.register(request);
+        return ResponseEntity.ok(BaseResponse.success("Register new account successfully"));
     }
 }

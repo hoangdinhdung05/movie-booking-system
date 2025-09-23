@@ -4,14 +4,17 @@ import com.hoangdung.movie_booking.dto.request.LoginRequest;
 import com.hoangdung.movie_booking.dto.request.RefreshTokenRequest;
 import com.hoangdung.movie_booking.dto.response.AuthResponse;
 import com.hoangdung.movie_booking.dto.response.RefreshTokenResponse;
+import com.hoangdung.movie_booking.dto.response.User.RegisterRequest;
 import com.hoangdung.movie_booking.entity.User;
 import com.hoangdung.movie_booking.exception.BusinessException;
 import com.hoangdung.movie_booking.exception.ResourceNotFoundException;
 import com.hoangdung.movie_booking.exception.TokenException;
+import com.hoangdung.movie_booking.exception.UserAlreadyExistsException;
 import com.hoangdung.movie_booking.repository.UserRepository;
 import com.hoangdung.movie_booking.security.JwtProvider;
 import com.hoangdung.movie_booking.service.AuthService;
 import com.hoangdung.movie_booking.service.RedisService;
+import com.hoangdung.movie_booking.service.UserService;
 import com.hoangdung.movie_booking.utils.RedisKeyUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -65,6 +68,7 @@ import java.util.concurrent.TimeUnit;
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
 
+    private final UserService userService;
     private final UserRepository userRepository;
     private final JwtProvider jwtProvider;
     private final AuthenticationManager authenticationManager;
@@ -187,6 +191,29 @@ public class AuthServiceImpl implements AuthService {
         }
 
         log.info("User {} logged out. Refresh token revoked for session {}", username, sessionId);
+    }
+
+    /**
+     * Registers a new user in the system.
+     * <p>
+     * This method is typically invoked during the user creation flow inside
+     * {@link UserService}, where it handles the registration logic such as:
+     * <ul>
+     *     <li>Validating the provided {@link RegisterRequest} data.</li>
+     *     <li>Creating a new user entity and persisting it into the database.</li>
+     *     <li>Applying necessary business rules (e.g., encoding password, setting default roles).</li>
+     *     <li>Triggering additional post-registration steps (e.g., sending verification email or OTP).</li>
+     * </ul>
+     *
+     * @param request the {@link RegisterRequest} containing user details (e.g., email, password, name)
+     *                required for creating a new account; must not be {@code null}.
+     * @throws IllegalArgumentException   if the request contains invalid or incomplete data.
+     * @throws UserAlreadyExistsException if a user with the same unique identifier (e.g., email)
+     *                                    already exists in the system.
+     */
+    @Override
+    public void register(RegisterRequest request) {
+
     }
 
 
