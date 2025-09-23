@@ -1,4 +1,4 @@
-package com.hoangdung.movie_booking.dto.response;
+package com.hoangdung.movie_booking.dto.response.System;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

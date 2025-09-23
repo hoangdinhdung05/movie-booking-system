@@ -8,6 +8,11 @@ public class BusinessException extends BaseException {
         super(code, message, HttpStatus.BAD_REQUEST);
     }
 
+    public BusinessException(String message) {
+        super("BUSINESS_EXCEPTION", message, HttpStatus.BAD_REQUEST);
+    }
+
+
     public BusinessException(String code, String message, Throwable cause) {
         super(code, message, HttpStatus.BAD_REQUEST, cause);
     }

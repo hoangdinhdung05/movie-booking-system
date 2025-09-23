@@ -1,6 +1,6 @@
 package com.hoangdung.movie_booking.exception;
 
-import com.hoangdung.movie_booking.dto.response.ErrorResponse;
+import com.hoangdung.movie_booking.dto.response.System.ErrorResponse;
 import lombok.extern.slf4j.Slf4j;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;

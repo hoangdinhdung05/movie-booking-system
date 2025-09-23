@@ -1,6 +1,6 @@
 package com.hoangdung.movie_booking.controller;
 
-import com.hoangdung.movie_booking.dto.response.BaseResponse;
+import com.hoangdung.movie_booking.dto.response.System.BaseResponse;
 import com.hoangdung.movie_booking.dto.response.OTP.ResendOtpRequest;
 import com.hoangdung.movie_booking.service.OtpService;
 import jakarta.validation.Valid;

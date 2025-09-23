@@ -1,10 +1,9 @@
 package com.hoangdung.movie_booking.controller;
 
-import com.hoangdung.movie_booking.dto.response.BaseResponse;
+import com.hoangdung.movie_booking.dto.response.System.BaseResponse;
 import com.hoangdung.movie_booking.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;

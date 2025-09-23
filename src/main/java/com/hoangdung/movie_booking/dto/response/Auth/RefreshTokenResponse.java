@@ -1,4 +1,4 @@
-package com.hoangdung.movie_booking.dto.response;
+package com.hoangdung.movie_booking.dto.response.Auth;
 
 import lombok.Builder;
 import lombok.Getter;
