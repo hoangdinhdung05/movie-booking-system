@@ -6,7 +6,6 @@ import com.hoangdung.movie_booking.dto.response.OTP.ResendOtpRequest;
 import com.hoangdung.movie_booking.dto.response.OTP.SendOtpRequest;
 import com.hoangdung.movie_booking.dto.response.OTP.VerifyOtpRequest;
 import com.hoangdung.movie_booking.entity.User;
-import com.hoangdung.movie_booking.exception.BusinessException;
 import com.hoangdung.movie_booking.exception.OtpException;
 import com.hoangdung.movie_booking.helper.OTP.OtpEmailTemplate;
 import com.hoangdung.movie_booking.helper.OTP.OtpGenerator;
@@ -15,7 +14,7 @@ import com.hoangdung.movie_booking.repository.UserRepository;
 import com.hoangdung.movie_booking.service.EmailService;
 import com.hoangdung.movie_booking.service.OtpService;
 import com.hoangdung.movie_booking.service.RedisService;
-import com.hoangdung.movie_booking.service.UserService;
+import com.hoangdung.movie_booking.service.User.AdminUserService;
 import com.hoangdung.movie_booking.utils.OtpRedisKeyUtil;
 import com.hoangdung.movie_booking.utils.enums.OtpType;
 import lombok.RequiredArgsConstructor;
@@ -73,7 +72,7 @@ public class OtpServiceImpl implements OtpService {
 
     private final RedisService redisService;
     private final UserRepository userRepository;
-    private final UserService userService;
+    private final AdminUserService adminUserService;
     private final EmailService emailService;
     private final OtpProperties otpProperties;
 
@@ -88,7 +87,7 @@ public class OtpServiceImpl implements OtpService {
     public void sendOtp(SendOtpRequest request, OtpType type) {
         log.info("Send OTP running with email: {}", request.getEmail());
 
-        User user = userService.getUserByEmail(request.getEmail());
+        User user = adminUserService.getUserByEmail(request.getEmail());
         checkSendAllowed(user.getEmail(), type);
 
         String otp = OtpGenerator.generate(otpProperties.getOtpLength());
@@ -142,7 +141,7 @@ public class OtpServiceImpl implements OtpService {
 
         validateOtp(request.getEmail(), request.getOtp(), OtpType.VERIFY_EMAIL);
 
-        User user = userService.getUserByEmail(request.getEmail());
+        User user = adminUserService.getUserByEmail(request.getEmail());
         user.setEmailVerified(true);
         userRepository.save(user);
 
@@ -168,7 +167,7 @@ public class OtpServiceImpl implements OtpService {
             throw new OtpException("Verify key invalid or expired.");
         }
 
-        User user = userService.getUserByEmail(email);
+        User user = adminUserService.getUserByEmail(email);
         redisService.delete(OtpRedisKeyUtil.verifyKey(verifyKey));
 
         log.info("Confirmed verifyKey={} for user={}", verifyKey, user.getId());

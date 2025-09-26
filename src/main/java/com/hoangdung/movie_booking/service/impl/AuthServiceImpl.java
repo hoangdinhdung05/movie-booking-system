@@ -15,7 +15,8 @@ import com.hoangdung.movie_booking.security.JwtProvider;
 import com.hoangdung.movie_booking.service.AuthService;
 import com.hoangdung.movie_booking.service.OtpService;
 import com.hoangdung.movie_booking.service.RedisService;
-import com.hoangdung.movie_booking.service.UserService;
+import com.hoangdung.movie_booking.service.User.AdminUserService;
+import com.hoangdung.movie_booking.service.User.UserService;
 import com.hoangdung.movie_booking.utils.RedisKeyUtil;
 import com.hoangdung.movie_booking.utils.enums.OtpType;
 import lombok.RequiredArgsConstructor;
@@ -218,7 +219,7 @@ public class AuthServiceImpl implements AuthService {
      * Registers a new user in the system.
      * <p>
      * This method is typically invoked during the user creation flow inside
-     * {@link UserService}, where it handles the registration logic such as:
+     * {@link AdminUserService}, where it handles the registration logic such as:
      * <ul>
      *     <li>Validating the provided {@link RegisterRequest} data.</li>
      *     <li>Creating a new user entity and persisting it into the database.</li>
@@ -236,7 +237,7 @@ public class AuthServiceImpl implements AuthService {
     public void register(RegisterRequest request) {
         log.info("Call logic register userService");
 
-        userService.createUser(request);
+        userService.register(request);
         log.info("Register successfully with username: {}", request.getUsername());
 
         log.info("Sendmail active email running");

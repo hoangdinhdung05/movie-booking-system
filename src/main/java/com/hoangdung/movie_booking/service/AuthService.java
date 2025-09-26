@@ -10,6 +10,7 @@ import com.hoangdung.movie_booking.dto.response.Auth.RefreshTokenResponse;
 import com.hoangdung.movie_booking.dto.response.User.RegisterRequest;
 import com.hoangdung.movie_booking.exception.BusinessException;
 import com.hoangdung.movie_booking.exception.TokenException;
+import com.hoangdung.movie_booking.service.User.AdminUserService;
 import org.springframework.security.authentication.BadCredentialsException;
 
 /**
@@ -73,7 +74,7 @@ public interface AuthService {
      * Registers a new user in the system.
      * <p>
      * This method is typically invoked during the user creation flow inside
-     * {@link UserService}, where it handles the registration logic such as:
+     * {@link AdminUserService}, where it handles the registration logic such as:
      * <ul>
      *     <li>Validating the provided {@link RegisterRequest} data.</li>
      *     <li>Creating a new user entity and persisting it into the database.</li>
