@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.*;
 /**
  * REST controller for authentication.
  * <p>
- * Provides endpoints for user login, refresh token, and logout.
+ * Provides endpoints for user login, refresh token, logout, register, active, forgot->verifyOtp->reset.
  * </p>
  */
 @RestController

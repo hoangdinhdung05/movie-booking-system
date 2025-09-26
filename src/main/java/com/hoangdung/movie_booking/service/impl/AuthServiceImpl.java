@@ -41,18 +41,25 @@ import java.util.concurrent.TimeUnit;
  * Responsibilities:
  * <ul>
  *   <li>Register new users with encoded password.</li>
+ *   <li>Active account after user register account</li>
  *   <li>Authenticate user credentials via {@link AuthenticationManager}.</li>
  *   <li>Generate and refresh JWT access & refresh tokens.</li>
  *   <li>Store refresh tokens in Redis with TTL.</li>
  *   <li>Support logout by invalidating refresh tokens.</li>
+ *   <li>Support forgot password</li>
+ *   <li>Verify OTP after call forgot and generate verify_key</li>
+ *   <li>Reset password with verify_key</li>
  *   <li>Fetch authenticated user information.</li>
  * </ul>
  *
  * <p>Example usage:</p>
  * <pre>{@code
- * // Register user
+ * // Register user -> Active account
  * RegisterRequest req = new RegisterRequest("dung", "123456", "dung@example.com");
  * UserResponse user = authService.register(req);
+ *
+ * // Active
+ * optService.active(request)
  *
  * // Login
  * LoginRequest loginReq = new LoginRequest("dung", "123456");
@@ -61,6 +68,14 @@ import java.util.concurrent.TimeUnit;
  * // Refresh token
  * AuthResponse refreshed = authService.refreshToken(new RefreshTokenRequest(auth.getRefreshToken()));
  *
+ * //Forgot -> Verify OTP -> Reset password
+ * otpService.sendOtp(request, Reset_password)
+ *
+ * //Verify OTP
+ * otpService.verifyOtp(request)
+ *
+ * //Reset password
+ * Custom logic
  * }</pre>
  *
  * @author
