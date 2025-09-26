@@ -6,6 +6,7 @@ import com.hoangdung.movie_booking.dto.response.OTP.ResendOtpRequest;
 import com.hoangdung.movie_booking.dto.response.OTP.SendOtpRequest;
 import com.hoangdung.movie_booking.dto.response.OTP.VerifyOtpRequest;
 import com.hoangdung.movie_booking.entity.User;
+import com.hoangdung.movie_booking.exception.BusinessException;
 import com.hoangdung.movie_booking.exception.OtpException;
 import com.hoangdung.movie_booking.helper.OTP.OtpEmailTemplate;
 import com.hoangdung.movie_booking.helper.OTP.OtpGenerator;
@@ -20,6 +21,8 @@ import com.hoangdung.movie_booking.utils.enums.OtpType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -80,6 +83,7 @@ public class OtpServiceImpl implements OtpService {
      * @param request request containing recipient email
      * @param type    OTP type (e.g. RESET_PASSWORD, VERIFY_EMAIL)
      */
+    @Transactional
     @Override
     public void sendOtp(SendOtpRequest request, OtpType type) {
         log.info("Send OTP running with email: {}", request.getEmail());
@@ -102,6 +106,7 @@ public class OtpServiceImpl implements OtpService {
      *
      * @param request request containing recipient email and OTP type
      */
+    @Transactional
     @Override
     public void resendOtp(ResendOtpRequest request) {
         log.info("Resend OTP running");
@@ -114,6 +119,7 @@ public class OtpServiceImpl implements OtpService {
      * @param request request containing email and OTP code
      * @return verification key string (UUID)
      */
+    @Transactional
     @Override
     public String verifyOtp(VerifyOtpRequest request) {
         log.info("Verify OTP running");
@@ -129,6 +135,7 @@ public class OtpServiceImpl implements OtpService {
      *
      * @param request request containing email and OTP code
      */
+    @Transactional
     @Override
     public void verifyEmail(VerifyOtpRequest request) {
         log.info("Verify email running with email: {}", request.getEmail());
@@ -139,6 +146,9 @@ public class OtpServiceImpl implements OtpService {
         user.setEmailVerified(true);
         userRepository.save(user);
 
+        log.debug("Before save: emailVerified={}", user.isEmailVerified());
+
+
         log.info("User {} verified successfully", user.getEmail());
     }
 
@@ -148,6 +158,7 @@ public class OtpServiceImpl implements OtpService {
      * @param verifyKey temporary verification key
      * @return user associated with the verify key if valid
      */
+    @Transactional
     @Override
     public User confirmVerifyKey(String verifyKey) {
         log.info("Confirm verify key running");
@@ -186,21 +197,21 @@ public class OtpServiceImpl implements OtpService {
      * Validate the OTP input against stored payload in Redis.
      */
     private void validateOtp(String email, String inputOtp, OtpType type) {
-        String otpKey = OtpRedisKeyUtil.otpKey(email, type);
+        String key = "OTP:" + email + ":" + type.name();
+        OtpPayload payload = redisService.getObject(key, OtpPayload.class);
 
-        OtpPayload payload = redisService.getObject(otpKey, OtpPayload.class);
         if (payload == null) {
+            log.error("OTP not found in Redis for key={}", key);
             throw new OtpException("OTP expired or not found.");
         }
 
+        log.debug("Validating OTP: input={} stored={}", inputOtp, payload.getCode());
+
         if (!payload.getCode().equals(inputOtp)) {
-            payload.incrementAttempts();
-            redisService.set(otpKey, payload, otpProperties.getExpiryMinutes(), TimeUnit.MINUTES);
-            throw new OtpException("Invalid OTP.");
+            throw new OtpException("Invalid OTP");
         }
 
-        // OTP verified → remove to prevent reuse
-        redisService.delete(otpKey);
+        // ok → OTP hợp lệ
     }
 
     /**

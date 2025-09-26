@@ -78,7 +78,11 @@ public class RedisServiceImpl implements RedisService {
     @Override
     public void set(String key, Object value, long timeout, TimeUnit timeUnit) {
         try {
-            stringRedisTemplate.opsForValue().set(key, String.valueOf(value), timeout, timeUnit);
+            String json = (value instanceof String)
+                    ? (String) value
+                    : objectMapper.writeValueAsString(value);
+
+            stringRedisTemplate.opsForValue().set(key, json, timeout, timeUnit);
             log.debug("Set key={} with TTL={} {}", key, timeout, timeUnit);
         } catch (Exception e) {
             log.error("Error setting key={} with TTL", key, e);

@@ -23,19 +23,11 @@ public class RedisKeyUtil {
     @Value("${app.redis.refresh-prefix}")
     private String refreshPrefix;
 
-    public String accessTokenKey(String username) {
-        return keyPrefix + tokenPrefix + username;
+    public String refreshTokenKey(String username, String sessionId) {
+        return "refresh:" + username + ":" + sessionId;
     }
 
-    public String refreshTokenKey(String username) {
-        return keyPrefix + refreshPrefix + username;
-    }
-
-    public String sessionKey(String username) {
-        return keyPrefix + sessionPrefix + username;
-    }
-
-    public String permissionKey(String username) {
-        return keyPrefix + permissionPrefix + username;
+    public String refreshTokenKeyPattern(String username) {
+        return "refresh:" + username + ":*";
     }
 }
